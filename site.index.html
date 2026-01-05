@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghost Motors - Gestão Pro</title>
+    <style>
+        :root {
+            --primary: #1e272e;
+            --accent: #3498db;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f1c40f;
+            --bg: #f1f2f6;
+            --card-bg: #ffffff;
+            --text: #2f3542;
+            --border: #dcdde1;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); line-height: 1.6; }
+
+        header { background: var(--primary); padding: 1rem 2rem; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        header h1 { font-size: 1.4rem; letter-spacing: 2px; }
+        header h1 span { color: var(--accent); }
+
+        nav { background: #fff; padding: 0 2rem; display: flex; gap: 1rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+        nav button { background: none; border: none; padding: 1rem; font-size: 0.85rem; font-weight: 700; color: #747d8c; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.3s; }
+        nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        .container { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+        section { display: none; animation: fadeIn 0.3s ease; }
+        section.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* KPI Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--card-bg); padding: 1.2rem; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .stat-card small { color: #747d8c; font-size: 0.7rem; text-transform: uppercase; font-weight: 800; }
+        .stat-card p { font-size: 1.3rem; font-weight: 800; color: var(--primary); margin-top: 0.3rem; }
+
+        /* History Month Cards */
+        .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+        .month-card { background: white; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; }
+        .month-header { background: #f8f9fa; padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .month-header h3 { font-size: 0.9rem; text-transform: uppercase; color: var(--primary); }
+        .month-body { padding: 1rem; flex-grow: 1; }
+        .month-footer { background: #f1f2f6; padding: 0.8rem 1rem; font-size: 0.85rem; border-top: 1px solid var(--border); }
+        
+        .sold-item { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+        .sold-item:last-child { border-bottom: none; }
+        .sold-profit { color: var(--success); font-weight: 700; }
+
+        /* Tables & Inventory */
+        .table-container { background: white; border-radius: 10px; border: 1px solid var(--border); overflow-x: auto; margin-bottom: 2rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 1rem; background: #f8f9fa; font-size: 0.75rem; color: #747d8c; text-transform: uppercase; }
+        td { padding: 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; color: white; }
+
+        /* Collapsible Section */
+        .collapsible-trigger {
+            width: 100%; padding: 1rem; background: #dfe6e9; border: none; border-radius: 8px; 
+            cursor: pointer; font-weight: 800; color: #2d3436; display: flex; justify-content: space-between; align-items: center;
+        }
+
+        /* Buttons & Forms */
+        .btn { padding: 0.6rem 1.2rem; border-radius: 6px; border: none; cursor: pointer; font-weight: 700; font-size: 0.8rem; transition: 0.2s; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-ghost { background: #eee; color: var(--text); }
+        .btn-danger { background: #f8d7da; color: var(--danger); }
+
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-content { background:white; width: 95%; max-width: 600px; padding: 2rem; border-radius: 12px; }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .full-width { grid-column: span 2; }
+        label { font-size: 0.75rem; font-weight: 700; color: #747d8c; margin-bottom: 4px; display: block; }
+        input, select, textarea { width: 100%; padding: 0.7rem; border: 1px solid var(--border); border-radius: 6px; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>GHOST<span>MOTORS</span></h1>
+        <div style="text-align: right">
+            <div id="clock" style="font-weight: 700; font-size: 0.9rem;"></div>
+            <small style="opacity: 0.7">Controle de Logística e Vendas</small>
+        </div>
+    </header>
+
+    <nav>
+        <button onclick="showSection('dashboard')" class="nav-btn active">📊 PERFORMANCE</button>
+        <button onclick="showSection('estoque')" class="nav-btn">🚗 INVENTÁRIO</button>
+        <button onclick="showSection('ferramentas')" class="nav-btn">🛠️ FERRAMENTAS</button>
+    </nav>
+
+    <div class="container">
+        
+        <section id="dashboard" class="active">
+            <div class="stats-grid">
+                <div class="stat-card"><small>Estoque Ativo</small><p id="dash-qtd">0</p></div>
+                <div class="stat-card"><small>Capital Imobilizado</small><p id="dash-investido">R$ 0,00</p></div>
+                <div class="stat-card"><small>Margem Total Est.</small><p id="dash-lucro" style="color: var(--success)">R$ 0,00</p></div>
+                <div class="stat-card"><small>ROI Médio Vendas</small><p id="dash-roi">0%</p></div>
+                <div class="stat-card"><small>Giro Médio (Dias)</small><p id="dash-giro">0</p></div>
+            </div>
+
+            <h2 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--primary);">Histórico Mensal (Cards de Vendas)</h2>
+            <div class="history-grid" id="history-grid"></div>
+        </section>
+
+        <section id="estoque">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <h2>Veículos no Pátio</h2>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="busca" placeholder="Filtrar por placa ou modelo..." oninput="renderEstoque()" style="width: 250px;">
+                    <button class="btn btn-primary" onclick="openModalVeiculo()">+ Entrada de Veículo</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Veículo</th>
+                            <th>Placa</th>
+                            <th>Custo Total</th>
+                            <th>Sugestão Venda</th>
+                            <th>Status</th>
+                            <th>Dias no Pátio</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-veiculos"></tbody>
+                </table>
+            </div>
+
+            <button class="collapsible-trigger" onclick="toggleVendidos()">
+                📂 ARQUIVO DE VEÍCULOS VENDIDOS
+                <span id="toggle-icon">＋</span>
+            </button>
+            
+            <div id="wrapper-vendidos" style="display: none; margin-top: 1rem;">
+                <div class="table-container" style="border-color: var(--success);">
+                    <table>
+                        <thead style="background: #e8f5e9;">
+                            <tr>
+                                <th>Veículo</th>
+                                <th>Placa</th>
+                                <th>Custo Final</th>
+                                <th>Vendido Por</th>
+                                <th>Lucro Líquido</th>
+                                <th>Data Venda</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-vendidos"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="ferramentas">
+            <h2 style="margin-bottom: 1.5rem;">Logística e Segurança</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <small>Backup de Dados</small>
+                    <p style="font-size: 0.85rem; font-weight: 400; margin-top: 5px;">Salve uma cópia local dos seus dados.</p>
+                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                        <button class="btn btn-success" onclick="exportarDados()">Exportar JSON</button>
+                        <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">Importar</button>
+                        <input type="file" id="importFile" style="display:none" onchange="importarDados(event)">
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <small>Limpar Sistema</small>
+                    <p style="font-size: 0.85rem; font-weight: 400; margin-top: 5px; color: var(--danger);">Cuidado: Isso apaga todos os registros.</p>
+                    <button class="btn btn-danger" style="margin-top: 1rem;" onclick="resetSistema()">Resetar Tudo</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="modal-veiculo" class="modal">
+        <div class="modal-content">
+            <h2 id="m-v-title" style="margin-bottom: 1.5rem;">Ficha de Veículo</h2>
+            <form id="form-veiculo">
+                <input type="hidden" id="v-id">
+                <div class="form-grid">
+                    <div><label>Marca</label><input type="text" id="v-marca" required></div>
+                    <div><label>Modelo</label><input type="text" id="v-modelo" required></div>
+                    <div><label>Ano</label><input type="number" id="v-ano" required></div>
+                    <div><label>Placa</label><input type="text" id="v-placa" required></div>
+                    <div><label>Custo Compra (R$)</label><input type="number" step="0.01" id="v-compra" required></div>
+                    <div><label>Venda (R$)</label><input type="number" step="0.01" id="v-venda" required></div>
+                    <div><label>Data Entrada</label><input type="date" id="v-data" required></div>
+                    <div>
+                        <label>Status</label>
+                        <select id="v-status" onchange="toggleVendaDate()">
+                            <option value="estoque">No Pátio</option>
+                            <option value="manutenção">Em Oficina</option>
+                            <option value="reservado">Reservado</option>
+                            <option value="vendido">Vendido</option>
+                        </select>
+                    </div>
+                    <div id="v-venda-div" style="display:none" class="full-width">
+                        <label>Data da Venda</label>
+                        <input type="date" id="v-data-venda">
+                    </div>
+                    <div class="full-width">
+                        <label>Custos Extras (Valor|Descrição)</label>
+                        <textarea id="v-gastos" rows="2" placeholder="Ex: 250|Polimento"></textarea>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closeModals()">Sair</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // DADOS INICIAIS PARA VISUALIZAÇÃO
+        const dummyData = [
+            { marca: "Toyota", modelo: "Corolla XEI", ano: "2021", placa: "GHOST-01", valorCompra: "105000", valorVenda: "122000", status: "vendido", data: "2025-10-05", dataVenda: "2025-11-10", gastos: "1200|Revisão 60k\n450|Estética" },
+            { marca: "Honda", modelo: "Civic Touring", ano: "2020", placa: "GHOST-02", valorCompra: "120000", valorVenda: "138000", status: "vendido", data: "2025-11-02", dataVenda: "2025-11-28", gastos: "2000|Pneus Novos" },
+            { marca: "VW", modelo: "Gol MPI", ano: "2022", placa: "GHOST-03", valorCompra: "45000", valorVenda: "54000", status: "estoque", data: "2025-12-15", dataVenda: "", gastos: "300|Troca de Óleo" },
+            { marca: "Chevrolet", modelo: "Onix Plus", ano: "2023", placa: "GHOST-04", valorCompra: "72000", valorVenda: "84900", status: "manutenção", data: "2025-12-28", dataVenda: "", gastos: "1500|Pintura Parachoque" },
+            { marca: "Jeep", modelo: "Compass Longitude", ano: "2021", placa: "GHOST-05", valorCompra: "110000", valorVenda: "129000", status: "vendido", data: "2025-12-01", dataVenda: "2025-12-20", gastos: "800|Higienização" },
+            { marca: "Fiat", modelo: "Strada Freedom", ano: "2022", placa: "GHOST-06", valorCompra: "82000", valorVenda: "93000", status: "reservado", data: "2025-11-20", dataVenda: "", gastos: "" }
+        ];
+
+        let estoque = JSON.parse(localStorage.getItem('gh_v3_estoque'));
+        if (!estoque) {
+            estoque = dummyData;
+            localStorage.setItem('gh_v3_estoque', JSON.stringify(estoque));
+        }
+
+        function save() {
+            localStorage.setItem('gh_v3_estoque', JSON.stringify(estoque));
+            renderAll();
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        function toggleVendidos() {
+            const wrapper = document.getElementById('wrapper-vendidos');
+            const icon = document.getElementById('toggle-icon');
+            if(wrapper.style.display === 'none') {
+                wrapper.style.display = 'block';
+                icon.innerText = '－';
+            } else {
+                wrapper.style.display = 'none';
+                icon.innerText = '＋';
+            }
+        }
+
+        function renderAll() {
+            renderDashboard();
+            renderEstoque();
+        }
+
+        function renderDashboard() {
+            const ativos = estoque.filter(v => v.status !== 'vendido');
+            const vendidos = estoque.filter(v => v.status === 'vendido');
+            
+            const totalInvestido = ativos.reduce((acc, v) => acc + (parseFloat(v.valorCompra) + sumGastos(v.gastos)), 0);
+            const totalVendaEstimada = ativos.reduce((acc, v) => acc + parseFloat(v.valorVenda), 0);
+            
+            document.getElementById('dash-qtd').innerText = ativos.length;
+            document.getElementById('dash-investido').innerText = fmtMoeda(totalInvestido);
+            document.getElementById('dash-lucro').innerText = fmtMoeda(totalVendaEstimada - totalInvestido);
+            
+            if(vendidos.length > 0) {
+                let totalROI = 0;
+                let totalDias = 0;
+                vendidos.forEach(v => {
+                    const custo = parseFloat(v.valorCompra) + sumGastos(v.gastos);
+                    const lucro = parseFloat(v.valorVenda) - custo;
+                    totalROI += (lucro / custo) * 100;
+                    const diff = Math.floor((new Date(v.dataVenda) - new Date(v.data)) / (1000 * 60 * 60 * 24));
+                    totalDias += diff > 0 ? diff : 1;
+                });
+                document.getElementById('dash-roi').innerText = (totalROI / vendidos.length).toFixed(1) + '%';
+                document.getElementById('dash-giro').innerText = Math.floor(totalDias / vendidos.length) + ' dias';
+            }
+
+            // Cards de Histórico Mensal
+            const grid = document.getElementById('history-grid');
+            grid.innerHTML = '';
+            const meses = {};
+
+            vendidos.forEach(v => {
+                const d = new Date(v.dataVenda + "T12:00:00");
+                const ref = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                if(!meses[ref]) meses[ref] = { label: d.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}), totalVendas: 0, totalLucro: 0, carros: [] };
+                
+                const custo = parseFloat(v.valorCompra) + sumGastos(v.gastos);
+                const lucro = parseFloat(v.valorVenda) - custo;
+                meses[ref].totalVendas += parseFloat(v.valorVenda);
+                meses[ref].totalLucro += lucro;
+                meses[ref].carros.push({ m: `${v.marca} ${v.modelo}`, l: lucro });
+            });
+
+            Object.keys(meses).sort().reverse().forEach(key => {
+                const mes = meses[key];
+                grid.innerHTML += `
+                    <div class="month-card">
+                        <div class="month-header"><h3>${mes.label}</h3></div>
+                        <div class="month-body">
+                            ${mes.carros.map(c => `<div class="sold-item"><span>${c.m}</span><span class="sold-profit">+ ${fmtMoeda(c.l)}</span></div>`).join('')}
+                        </div>
+                        <div class="month-footer">
+                            <div style="display:flex; justify-content:space-between"><span>Vendas:</span> <strong>${fmtMoeda(mes.totalVendas)}</strong></div>
+                            <div style="display:flex; justify-content:space-between; color:var(--success)"><span>Lucro:</span> <strong>${fmtMoeda(mes.totalLucro)}</strong></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderEstoque() {
+            const listaAtivos = document.getElementById('lista-veiculos');
+            const listaVendidos = document.getElementById('lista-vendidos');
+            const busca = document.getElementById('busca').value.toLowerCase();
+            
+            listaAtivos.innerHTML = '';
+            listaVendidos.innerHTML = '';
+
+            estoque.forEach((v, i) => {
+                const termo = `${v.marca} ${v.modelo} ${v.placa}`.toLowerCase();
+                if(!termo.includes(busca)) return;
+
+                const custo = parseFloat(v.valorCompra) + sumGastos(v.gastos);
+                const hoje = v.status === 'vendido' ? new Date(v.dataVenda) : new Date();
+                const dias = Math.floor((hoje - new Date(v.data)) / (1000 * 60 * 60 * 24));
+
+                if(v.status === 'vendido') {
+                    const lucro = parseFloat(v.valorVenda) - custo;
+                    listaVendidos.innerHTML += `
+                        <tr>
+                            <td><strong>${v.marca} ${v.modelo}</strong></td>
+                            <td>${v.placa}</td>
+                            <td>${fmtMoeda(custo)}</td>
+                            <td>${fmtMoeda(v.valorVenda)}</td>
+                            <td style="color:var(--success); font-weight:700">+ ${fmtMoeda(lucro)}</td>
+                            <td>${new Date(v.dataVenda + "T12:00:00").toLocaleDateString()}</td>
+                            <td><button class="btn btn-ghost" onclick="editVeiculo(${i})">Editar</button></td>
+                        </tr>
+                    `;
+                } else {
+                    listaAtivos.innerHTML += `
+                        <tr>
+                            <td><strong>${v.marca} ${v.modelo}</strong><br><small>${v.ano}</small></td>
+                            <td><code>${v.placa}</code></td>
+                            <td>${fmtMoeda(custo)}</td>
+                            <td>${fmtMoeda(v.valorVenda)}</td>
+                            <td><span class="badge" style="background:${getColStatus(v.status)}">${v.status}</span></td>
+                            <td>${dias} dias</td>
+                            <td>
+                                <button class="btn btn-ghost" onclick="editVeiculo(${i})">Editar</button>
+                                <button class="btn btn-danger" style="padding:5px" onclick="delVeiculo(${i})">×</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+        }
+
+        // Funções de Modal e Lógica
+        function openModalVeiculo() { 
+            document.getElementById('form-veiculo').reset(); 
+            document.getElementById('v-id').value = ''; 
+            document.getElementById('modal-veiculo').style.display = 'flex'; 
+        }
+        
+        function closeModals() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); }
+
+        function toggleVendaDate() { 
+            document.getElementById('v-venda-div').style.display = (document.getElementById('v-status').value === 'vendido') ? 'block' : 'none'; 
+        }
+
+        document.getElementById('form-veiculo').onsubmit = e => {
+            e.preventDefault();
+            const id = document.getElementById('v-id').value;
+            const data = {
+                marca: document.getElementById('v-marca').value, modelo: document.getElementById('v-modelo').value,
+                ano: document.getElementById('v-ano').value, placa: document.getElementById('v-placa').value,
+                valorCompra: document.getElementById('v-compra').value, valorVenda: document.getElementById('v-venda').value,
+                status: document.getElementById('v-status').value, data: document.getElementById('v-data').value,
+                dataVenda: document.getElementById('v-data-venda').value, gastos: document.getElementById('v-gastos').value
+            };
+            if(id === "") estoque.push(data); else estoque[id] = data;
+            save(); closeModals();
+        };
+
+        function editVeiculo(i) {
+            openModalVeiculo();
+            const v = estoque[i];
+            document.getElementById('v-id').value = i;
+            document.getElementById('v-marca').value = v.marca;
+            document.getElementById('v-modelo').value = v.modelo;
+            document.getElementById('v-ano').value = v.ano;
+            document.getElementById('v-placa').value = v.placa;
+            document.getElementById('v-compra').value = v.valorCompra;
+            document.getElementById('v-venda').value = v.valorVenda;
+            document.getElementById('v-status').value = v.status;
+            document.getElementById('v-data').value = v.data;
+            document.getElementById('v-data-venda').value = v.dataVenda || '';
+            document.getElementById('v-gastos').value = v.gastos;
+            toggleVendaDate();
+        }
+
+        function delVeiculo(i) { if(confirm("Apagar registro?")) { estoque.splice(i, 1); save(); } }
+        function fmtMoeda(v) { return new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(v); }
+        function sumGastos(t) { return !t ? 0 : t.split('\n').reduce((acc, l) => acc + (parseFloat(l.split('|')[0]) || 0), 0); }
+        function getColStatus(s) { return { estoque:'#2ecc71', manutenção:'#f1c40f', reservado:'#3498db' }[s] || '#ccc'; }
+        
+        function resetSistema() { if(confirm("ISSO APAGARÁ TUDO. Continuar?")) { localStorage.clear(); location.reload(); } }
+        
+        function exportarDados() {
+            const blob = new Blob([JSON.stringify(estoque)], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'backup_ghost_motors.json';
+            a.click();
+        }
+
+        setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleString('pt-BR'); }, 1000);
+        renderAll();
+    </script>
+</body>
+</html>
